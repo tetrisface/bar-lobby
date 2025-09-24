@@ -16,6 +16,7 @@ import { GetCommandData, GetCommandIds, GetCommands } from "tachyon-protocol";
 import { MultiplayerLaunchSettings } from "@main/game/game";
 import { logLevels } from "@main/services/log.service";
 import { ModMetadata, ModInstallOptions, ModType, ModInfo, ModConflict } from "@main/content/mods/mod-types";
+import { BakedGameResult } from "@main/content/mods/delta-baking.service";
 
 const logApi = {
     purge: (): Promise<string[]> => ipcRenderer.invoke("log:purge"),
@@ -136,6 +137,8 @@ const modApi = {
     checkModExists: (repository: string, branch: string): Promise<boolean> => ipcRenderer.invoke("mod:checkModExists", repository, branch) as unknown as Promise<boolean>,
     getModInfo: (repository: string, branch: string): Promise<ModInfo> => ipcRenderer.invoke("mod:getModInfo", repository, branch) as unknown as Promise<ModInfo>,
     getModPaths: (): Promise<string[]> => ipcRenderer.invoke("mod:getModPaths"),
+    bakeGameWithMods: (baseGameType: string, modIds: string[], engineVersion: string): Promise<BakedGameResult> =>
+        ipcRenderer.invoke("mod:bakeGameWithMods", baseGameType, modIds, engineVersion) as unknown as Promise<BakedGameResult>,
 
     // Events
     onModInstalled: (callback: (modId: string) => void) => ipcRenderer.on("mod:installed", (_, modId) => callback(modId)),

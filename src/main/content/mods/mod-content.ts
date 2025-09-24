@@ -12,11 +12,13 @@ import { MOD_PATHS, getEngineModPaths } from "@main/config/app";
 import { fileExists } from "@main/utils/file";
 import { ModMetadata, ModInfo, ModType, ModDependency, ModInstallOptions, ModConflict } from "./mod-types";
 import { GitHubModDownloader } from "./github-mod-downloader";
+import { DeltaBakingService, DeltaBakingOptions, BakedGameResult } from "./delta-baking.service";
 
 const log = logger("mod-content.ts");
 
 export class ModContentAPI extends AbstractContentAPI<string, ModMetadata> {
     public readonly githubDownloader = new GitHubModDownloader();
+    public readonly deltaBakingService = new DeltaBakingService();
     public readonly onModInstalled: Signal<string> = new Signal();
     public readonly onModUninstalled: Signal<string> = new Signal();
     public readonly onModConflict: Signal<ModConflict> = new Signal();
@@ -314,5 +316,21 @@ export class ModContentAPI extends AbstractContentAPI<string, ModMetadata> {
     public async uninstallVersion(version: string | ModMetadata): Promise<void> {
         const modId = typeof version === "string" ? version : version.id;
         await this.uninstallMod(modId);
+    }
+
+    /**
+     * Bakes selected mods with a base game into a single game archive.
+     * This is used when the engine doesn't support loading mods via other methods.
+     */
+    public async bakeGameWithMods(baseGameType: string, mods: ModMetadata[], engineVersion: string): Promise<BakedGameResult> {
+        log.info(`🏗️ Baking game: ${baseGameType} with ${mods.length} mods`);
+
+        const options: DeltaBakingOptions = {
+            baseGameType,
+            mods,
+            engineVersion,
+        };
+
+        return await this.deltaBakingService.bakeGame(options);
     }
 }

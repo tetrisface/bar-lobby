@@ -4,6 +4,7 @@
 
 import { computed, type Ref } from "vue";
 import { ModMetadata } from "@main/content/mods/mod-types";
+import { BakedGameResult } from "@main/content/mods/delta-baking.service";
 
 export interface ModIntegrationOptions {
     selectedMods: Ref<ModMetadata[]>;
@@ -15,6 +16,7 @@ export interface ModIntegrationReturn {
     hasMods: Ref<boolean>;
     generateModScriptContent: () => string;
     injectModsIntoScript: (script: string) => string;
+    bakeGameWithMods: (baseGameType: string, engineVersion: string) => Promise<BakedGameResult>;
 }
 
 /**
@@ -73,38 +75,39 @@ export function useModIntegration(options: ModIntegrationOptions): ModIntegratio
             return script;
         }
 
-        const modContent = generateModScriptContent();
+        // 🎯 ENABLED: GameType approach for single mods
+        if (selectedMods.value.length === 1) {
+            const mod = selectedMods.value[0];
 
-        // Find the end of the main [Game] section
-        // The script structure is: [Game] { ... content ... }
-        // We want to inject mods before the final closing brace of the [Game] section
+            // Extract archive name from install path
+            const pathParts = mod.installPath.split(/[/\\]/);
+            const archiveName = pathParts[pathParts.length - 1]; // e.g., modtest3-scenario.sdd
 
-        // Look for the last closing brace that's not part of a nested section
-        // We'll find the last '}' that's at the root level
-        let braceCount = 0;
-        let lastRootBrace = -1;
+            console.log(`🎯 Using GameType approach - setting gametype = ${archiveName}`);
 
-        for (let i = 0; i < script.length; i++) {
-            if (script[i] === "{") {
-                braceCount++;
-            } else if (script[i] === "}") {
-                braceCount--;
-                if (braceCount === 0) {
-                    lastRootBrace = i;
-                }
-            }
+            // Replace the gametype line with our mod archive
+            const modifiedScript = script.replace(/gametype\s*=\s*[^;\n\r]+[;\n\r]/i, `gametype = ${archiveName};\n`);
+
+            return modifiedScript;
         }
 
-        if (lastRootBrace === -1) {
-            // If no proper structure found, append at the end
-            return script + "\n" + modContent;
+        // For multiple mods, we still need delta baking (not implemented yet)
+        console.log(`⚠️ Multiple mods selected - GameType approach only works for single mods`);
+        return script;
+    }
+
+    /**
+     * Bakes the selected mods with a base game into a single game archive.
+     */
+    async function bakeGameWithMods(baseGameType: string, engineVersion: string): Promise<BakedGameResult> {
+        if (!hasMods.value) {
+            throw new Error("No mods selected for baking");
         }
 
-        // Insert mod content before the final closing brace
-        const beforeClosing = script.substring(0, lastRootBrace);
-        const afterClosing = script.substring(lastRootBrace);
+        const modIds = selectedMods.value.map((mod) => mod.id);
+        console.log(`🏗️ Baking game: ${baseGameType} with mods: ${modIds.join(", ")}`);
 
-        return beforeClosing + "\n" + modContent + "\n" + afterClosing;
+        return await window.mod.bakeGameWithMods(baseGameType, modIds, engineVersion);
     }
 
     return {
@@ -113,5 +116,6 @@ export function useModIntegration(options: ModIntegrationOptions): ModIntegratio
         hasMods,
         generateModScriptContent,
         injectModsIntoScript,
+        bakeGameWithMods,
     };
 }

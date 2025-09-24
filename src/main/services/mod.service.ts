@@ -6,6 +6,7 @@ import { ipcMain } from "@main/typed-ipc";
 import { BarIpcWebContents } from "@main/typed-ipc";
 import { ModContentAPI } from "@main/content/mods/mod-content";
 import { ModInstallOptions, ModType } from "@main/content/mods/mod-types";
+import { BakedGameResult } from "@main/content/mods/delta-baking.service";
 import { MOD_PATHS } from "@main/config/app";
 
 const modContentAPI = new ModContentAPI();
@@ -41,6 +42,11 @@ function registerIpcHandlers(webContents: BarIpcWebContents) {
         return await modContentAPI.githubDownloader.getModInfo(repository, branch);
     });
     ipcMain.handle("mod:getModPaths", () => [...MOD_PATHS]);
+
+    ipcMain.handle("mod:bakeGameWithMods", async (_, baseGameType: string, modIds: string[], engineVersion: string) => {
+        const mods = modIds.map((id) => modContentAPI.getMod(id)).filter((mod) => mod !== undefined);
+        return await modContentAPI.bakeGameWithMods(baseGameType, mods, engineVersion);
+    });
 
     // Events
     modContentAPI.onModInstalled.add((modId) => {

@@ -17,6 +17,7 @@ import type { Scenario } from "@main/content/game/scenario";
 import type { Settings } from "@main/services/settings.service";
 import type { TachyonEvent, TachyonResponse } from "tachyon-protocol";
 import type { ModMetadata, ModInstallOptions, ModType, ModInfo, ModConflict } from "@main/content/mods/mod-types";
+import type { BakedGameResult } from "@main/content/mods/delta-baking.service";
 import { ipcRenderer as electronIpcRenderer, ipcMain as electronIpcMain } from "electron";
 
 export type IPCEvents = {
@@ -86,6 +87,7 @@ export type IPCCommands = {
     "mod:checkModExists": (repository: string, branch: string) => Promise<boolean>;
     "mod:getModInfo": (repository: string, branch: string) => Promise<ModInfo>;
     "mod:getModPaths": () => string[];
+    "mod:bakeGameWithMods": (baseGameType: string, modIds: string[], engineVersion: string) => Promise<BakedGameResult>;
     "info:get": () => Info;
     "log:log": (fileName: string, level: logLevels, msg: string) => void;
     "log:pack": () => string;

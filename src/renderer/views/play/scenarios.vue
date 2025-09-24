@@ -183,9 +183,6 @@ async function launch() {
         .replaceAll("__RESTRICTEDUNITS__", restrictionsStr)
         .replaceAll("__NUMRESTRICTIONS__", restrictionCount.toString());
 
-    // Then inject mod content directly into the script
-    script = modIntegration.injectModsIntoScript(script);
-
     if (!enginesStore.selectedEngineVersion) {
         throw new Error("No engine version selected");
     }
@@ -196,9 +193,41 @@ async function launch() {
     console.log(`=== LAUNCHING SCENARIO WITH MODS ===`);
     console.log(`Selected mods:`, modSelection.selectedMods.value.map(mod => `${mod.name} (${mod.id})`));
     console.log(`Mod paths:`, modPaths);
+
+    // 🏗️ DELTA BAKING: If mods are selected, bake them into a single game
+    if (modSelection.selectedMods.value.length > 0) {
+        try {
+            console.log(`🏗️ Starting delta baking process...`);
+            
+            // Extract current gametype from script
+            const gametypeMatch = script.match(/gametype\s*=\s*([^;\n\r]+)/i);
+            const baseGameType = gametypeMatch ? gametypeMatch[1].trim() : LATEST_GAME_VERSION;
+            
+            console.log(`Base game type: ${baseGameType}`);
+            
+            // Bake the game with mods
+            const bakedResult = await modIntegration.bakeGameWithMods(baseGameType, enginesStore.selectedEngineVersion.id);
+            
+            console.log(`✅ Baked game created: ${bakedResult.gameType}`);
+            console.log(`Baked game path: ${bakedResult.archivePath}`);
+            
+            // Replace gametype with baked game
+            script = script.replace(
+                /gametype\s*=\s*[^;\n\r]+[;\n\r]/i,
+                `gametype = ${bakedResult.gameType};\n`
+            );
+            
+            console.log(`🎯 Using baked game: ${bakedResult.gameType}`);
+            
+        } catch (error) {
+            console.error(`❌ Delta baking failed:`, error);
+            // Fallback to original mod injection approach
+            script = modIntegration.injectModsIntoScript(script);
+        }
+    }
+    
     console.log(`Original startscript:`, selectedScenario.value.startscript);
-    console.log(`Mod script content:`, modIntegration.modScriptContent.value);
-    console.log(`Final script with mods:`, script);
+    console.log(`Final script:`, script);
     
     await window.game.launchScript(script, LATEST_GAME_VERSION, enginesStore.selectedEngineVersion.id, modPaths);
 }
